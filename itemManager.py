@@ -37,6 +37,7 @@ import os.path
 # 
 # #
 DATE_FILE = 'data.json'
+APP_VERSION = 'Ver 4.0'
 
 class NewItemDialog(QDialog):
     def __init__(self, title="새로운 아이템", name="", price="", stock="", parent=None):
@@ -195,14 +196,6 @@ class PriceWidget(QWidget):
         super().__init__()
         layout = QVBoxLayout()
 
-        layout1 = QHBoxLayout()
-        self.label = QLabel("검색")
-        self.label.setAlignment(Qt.AlignCenter)
-        layout1.addWidget(self.label)
-        self.textbox = QLineEdit("")
-        layout1.addWidget(self.textbox)
-        layout.addLayout(layout1)
-
         self.tableWidget = ItemTable(self)
         self.tableWidget.setRowCount(1000)
         self.tableWidget.setColumnCount(3)
@@ -231,7 +224,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setGeometry(100,100, 500, 600)
-        self.setWindowTitle("아이템 관리자")
+        self.setWindowTitle(''.join(["아이템 관리자 - ", APP_VERSION]))
         self.setWindowIcon(QIcon('money.ico'))
         self.mainWidget = MainWidget()
         self.priceWidget = PriceWidget()
@@ -291,7 +284,7 @@ class MainWindow(QMainWindow):
         self.setStatusBar(QStatusBar(self))
 
         button_action_export1 = QAction(QIcon("document-export.png"), "내보내기1(&O)", self)
-        button_action_export1.setStatusTip("내보내기1")
+        button_action_export1.setStatusTip("활성아이템만 내보내기")
         button_action_export1.triggered.connect(self.onExport1)
         # button_action.setCheckable(True)
         button_action_export1.setShortcut(QKeySequence("Ctrl+O"))
@@ -300,7 +293,7 @@ class MainWindow(QMainWindow):
         self.setStatusBar(QStatusBar(self))
 
         button_action_export2 = QAction(QIcon("document-export.png"), "내보내기2(&P)", self)
-        button_action_export2.setStatusTip("내보내기2")
+        button_action_export2.setStatusTip("전체 내보내기")
         button_action_export2.triggered.connect(self.onExport2)
         # button_action.setCheckable(True)
         button_action_export2.setShortcut(QKeySequence("Ctrl+P"))
@@ -473,21 +466,29 @@ class MainWindow(QMainWindow):
         filename, selectgedFilter = QFileDialog.getSaveFileName(self, "Save Excel File", ".",
                                                         "Excel File (*.xls *.xlsx)")
         if filename != "":
+            export_option = self.combo_box.currentIndex()
             workbook = xlsxwriter.Workbook(filename)
             worksheet = workbook.add_worksheet()
             cell_format = workbook.add_format({'bold': False, 'font_color': 'black'})
-            worksheet.write(0, 0, "품명", cell_format)
-            worksheet.write(0, 1, "가격", cell_format)
-            worksheet.write(0, 2, "재고", cell_format)
+            worksheet.write(0, 0, "품 명", cell_format)
+            worksheet.write(0, 1, "가 격", cell_format)
+            worksheet.write(0, 2, "재 고", cell_format)
             worksheet.set_column(0, 0, 30)
-            worksheet.set_column(1, 1, 10)
+            worksheet.set_column(1, 1, 30)
             worksheet.set_column(2, 2, 10)
             print_row = 0
             for i in range(self.mainWidget.tableWidget.rowCount()):
+                if self.mainWidget.tableWidget.item(i, 0) == None:
+                    break
                 if self.mainWidget.tableWidget.item(i, 0).flags() & Qt.ItemIsEditable:
                     worksheet.write_string(print_row+1, 0, self.mainWidget.tableWidget.item(i, 0).text(), cell_format)
+                    price_text = list()
                     if self.mainWidget.tableWidget.item(i, 1).text().isnumeric():
-                        worksheet.write_number(print_row+1, 1, float(self.mainWidget.tableWidget.item(i, 1).text()), cell_format)
+                        price_text.append(self.mainWidget.tableWidget.item(i, 1).text())
+                        # 대체아이템
+                        if export_option > 0:
+                            price_text.append(self.GetEquivalentItem(float(price_text[0]), export_option))
+                        worksheet.write(print_row+1, 1, " 또는 ".join(price_text), cell_format)
                     if self.mainWidget.tableWidget.item(i, 2).text().isnumeric():
                         worksheet.write_number(print_row+1, 2, float(self.mainWidget.tableWidget.item(i, 2).text()), cell_format)
                     print_row = print_row + 1
@@ -498,20 +499,48 @@ class MainWindow(QMainWindow):
         filename, selectgedFilter = QFileDialog.getSaveFileName(self, "Save Excel File", ".",
                                                         "Excel File (*.xls *.xlsx)")
         if filename != "":
+            print(self.combo_box.currentIndex())
+            export_option = self.combo_box.currentIndex()
             workbook = xlsxwriter.Workbook(filename)
             worksheet = workbook.add_worksheet()
             cell_format = workbook.add_format({'bold': False, 'font_color': 'black'})
-            worksheet.write(0, 0, "품명", cell_format)
-            worksheet.write(0, 1, "가격", cell_format)
-            worksheet.write(0, 2, "재고", cell_format)
+            worksheet.write(0, 0, "품 명", cell_format)
+            worksheet.write(0, 1, "가 격", cell_format)
+            worksheet.write(0, 2, "재 고", cell_format)
+            worksheet.set_column(0, 0, 30)
+            worksheet.set_column(1, 1, 30)
+            worksheet.set_column(2, 2, 10)
             for i in range(self.mainWidget.tableWidget.rowCount()):
+                if self.mainWidget.tableWidget.item(i, 0) == None:
+                    break
+                # 품명
                 if self.mainWidget.tableWidget.item(i, 0).text() != "@@":
                     worksheet.write(i+1, 0, self.mainWidget.tableWidget.item(i, 0).text(), cell_format)
+                # 가격
+                price_text = list()
                 if self.mainWidget.tableWidget.item(i, 1).text().isnumeric():
-                    worksheet.write(i+1, 1, float(self.mainWidget.tableWidget.item(i, 1).text()), cell_format)
+                    price_text.append(self.mainWidget.tableWidget.item(i, 1).text())
+                    # 대체아이템
+                    if export_option > 0:
+                        price_text.append(self.GetEquivalentItem(float(price_text[0]), export_option))
+                    worksheet.write(i+1, 1, " 또는 ".join(price_text), cell_format)
+                # 재고
                 if self.mainWidget.tableWidget.item(i, 2).text().isnumeric():
                     worksheet.write(i+1, 2, float(self.mainWidget.tableWidget.item(i, 2).text()), cell_format)
             workbook.close()
+
+    def GetEquivalentItem(self, price, option):
+        item_text = ""
+        for i in range(self.priceWidget.tableWidget.rowCount()):
+            if self.priceWidget.tableWidget.item(i, option) == None:
+                break
+            price_range_str = self.priceWidget.tableWidget.item(i, 0).text()
+            price_range = price_range_str.split('-')
+            print(price_range)
+            if price >= float(price_range[0].strip()) and price <= float(price_range[1].strip()):
+                item_text = self.priceWidget.tableWidget.item(i, option).text()
+                break
+        return item_text
 
     def onImport(self, s):
         print("Import", s)
