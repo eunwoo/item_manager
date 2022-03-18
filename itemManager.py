@@ -37,7 +37,7 @@ import os.path
 # 
 # #
 DATE_FILE = 'data.json'
-APP_VERSION = 'Ver 4.0'
+APP_VERSION = 'Ver 5.0'
 
 class NewItemDialog(QDialog):
     def __init__(self, title="새로운 아이템", name="", price="", stock="", parent=None):
@@ -484,7 +484,9 @@ class MainWindow(QMainWindow):
                     worksheet.write_string(print_row+1, 0, self.mainWidget.tableWidget.item(i, 0).text(), cell_format)
                     price_text = list()
                     if self.mainWidget.tableWidget.item(i, 1).text().isnumeric():
-                        price_text.append(self.mainWidget.tableWidget.item(i, 1).text())
+                        # 기준값 적용
+                        price_multiplied = float(self.mainWidget.tableWidget.item(i, 1).text())*float(self.price_multiply.text())
+                        price_text.append(str(price_multiplied))
                         # 대체아이템
                         if export_option > 0:
                             price_text.append(self.GetEquivalentItem(float(price_text[0]), export_option))
@@ -519,7 +521,9 @@ class MainWindow(QMainWindow):
                 # 가격
                 price_text = list()
                 if self.mainWidget.tableWidget.item(i, 1).text().isnumeric():
-                    price_text.append(self.mainWidget.tableWidget.item(i, 1).text())
+                    # 기준값 적용
+                    price_multiplied = float(self.mainWidget.tableWidget.item(i, 1).text())*float(self.price_multiply.text())
+                    price_text.append(str(price_multiplied))
                     # 대체아이템
                     if export_option > 0:
                         price_text.append(self.GetEquivalentItem(float(price_text[0]), export_option))
