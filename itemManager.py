@@ -1,7 +1,7 @@
 import sys
 
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QAction, QIcon, QKeySequence, QColor, QBrush, QStandardItemModel
+from PySide6.QtCore import QSize, Qt, QSortFilterProxyModel
+from PySide6.QtGui import QAction, QIcon, QKeySequence, QColor, QBrush, QStandardItemModel, QStandardItem
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -28,12 +28,15 @@ from PySide6.QtWidgets import (
 import xlsxwriter
 from openpyxl import load_workbook
 from data import Data
+import json
+import os.path
 
 # Item Delegate
 # https://pythonshowcase.com/question/background-color-of-the-particular-cell-is-not-changing-after-clicking-specific-cells-in-qtablewidget-pyqt5
 # 
 # 
 # #
+DATE_FILE = 'data.json'
 
 class NewItemDialog(QDialog):
     def __init__(self, title="새로운 아이템", name="", price="", stock="", parent=None):
@@ -152,6 +155,17 @@ class MainWidget(QWidget):
 
         layout.addWidget(self.tableWidget)
 
+        # filter proxy
+        model = QStandardItemModel(5, 3)
+        model.setHorizontalHeaderLabels(['ID', 'DATE', 'VALUE'])
+        for row, text in enumerate(['Cell', 'Fish', 'Apple', 'Ananas', 'Mango']):
+            item = QStandardItem(text)
+            model.setItem(row, 2, item)
+
+        self.filter_proxy_model = QSortFilterProxyModel()
+        self.filter_proxy_model.setSourceModel(model)
+        self.filter_proxy_model.setFilterKeyColumn(2) # third column        
+
         self.setLayout(layout)
     def onChanged(self, text):
         print('changed')
@@ -239,6 +253,23 @@ class MainWindow(QMainWindow):
         self.tab.addTab(self.priceWidget, "가격 매칭 테이블")
 
         self.setCentralWidget(self.tab)
+
+        if os.path.isfile(DATE_FILE) == True:
+            fp = open(DATE_FILE, 'r', encoding='euc-kr')
+            try:
+                data = json.load(fp)
+                if 'items' in data: self.items = data['items']
+                else: self.items = []
+                if 'matching' in data: self.matching = data['matching']
+                else: self.matching = []
+                print(self.items)
+                print(self.matching)
+                self.LoadData()
+                fp.close()
+            except json.decoder.JSONDecodeError as e:
+                self.LoadDefaultVariable()
+        else:
+            self.LoadDefaultVariable()
 
 
         toolbar = QToolBar("My main toolbar")
@@ -334,6 +365,63 @@ class MainWindow(QMainWindow):
         file_menu.addAction(button_action_export2)
         file_menu.addAction(button_action_import)
         file_menu.addAction(button_action_toggleActivate)
+
+    def LoadData(self):
+        for i in range(len(self.items)):
+            print(self.items[i])
+            print(self.items[i][0])
+            print(self.items[i][1])
+            print(self.items[i][2])
+            itema = QTableWidgetItem(self.items[i][0])
+            self.mainWidget.tableWidget.setItem(i,0,itema)
+            itema = QTableWidgetItem(str(self.items[i][1]))
+            self.mainWidget.tableWidget.setItem(i,1,itema)
+            itema = QTableWidgetItem(str(self.items[i][2]))
+            self.mainWidget.tableWidget.setItem(i,2,itema)
+        for i in range(len(self.matching)):
+            print(self.matching[i])
+            print(self.matching[i][0])
+            print(self.matching[i][1])
+            print(self.matching[i][2])
+            itema = QTableWidgetItem(str(self.matching[i][0]))
+            self.priceWidget.tableWidget.setItem(i,0,itema)
+            itema = QTableWidgetItem(str(self.matching[i][1]))
+            self.priceWidget.tableWidget.setItem(i,1,itema)
+            itema = QTableWidgetItem(str(self.matching[i][2]))
+            self.priceWidget.tableWidget.setItem(i,2,itema)
+    def LoadDefaultVariable(self):
+        print('LoadDefaultVariable')
+
+    def closeEvent(self, e):
+        print('close')
+        fp = open(DATE_FILE, 'w', encoding='euc-kr')
+
+        self.items = {}
+        items = list()
+        for i in range(self.mainWidget.tableWidget.rowCount()):
+            if self.mainWidget.tableWidget.item(i, 0) == None:
+                break
+            one_item = [None]*3
+            one_item[0] = self.mainWidget.tableWidget.item(i, 0).text()
+            one_item[1] = self.mainWidget.tableWidget.item(i, 1).text()
+            one_item[2] = self.mainWidget.tableWidget.item(i, 2).text()
+            items.append(one_item)
+        self.items['items'] = items
+
+        items = list()
+        for i in range(self.priceWidget.tableWidget.rowCount()):
+            if self.priceWidget.tableWidget.item(i, 0) == None:
+                break
+            one_item = [None]*3
+            one_item[0] = self.priceWidget.tableWidget.item(i, 0).text()
+            one_item[1] = self.priceWidget.tableWidget.item(i, 1).text()
+            one_item[2] = self.priceWidget.tableWidget.item(i, 2).text()
+            items.append(one_item)
+        self.items['matching'] = items
+
+        json.dump(self.items, fp, indent = 2, ensure_ascii = False)
+        fp.close()
+        print('close')
 
     def DisableTableRow(self, tablewidget):
         row = tablewidget.currentRow()
