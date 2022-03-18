@@ -155,44 +155,31 @@ class MainWidget(QWidget):
 
         layout.addWidget(self.tableWidget)
 
-        # filter proxy
-        model = QStandardItemModel(5, 3)
-        model.setHorizontalHeaderLabels(['ID', 'DATE', 'VALUE'])
-        for row, text in enumerate(['Cell', 'Fish', 'Apple', 'Ananas', 'Mango']):
-            item = QStandardItem(text)
-            model.setItem(row, 2, item)
-
-        self.filter_proxy_model = QSortFilterProxyModel()
-        self.filter_proxy_model.setSourceModel(model)
-        self.filter_proxy_model.setFilterKeyColumn(2) # third column        
-
         self.setLayout(layout)
     def onChanged(self, text):
         print('changed')
         print(text)
     def onClickFind(self):
         print('find')
+        # show all
         if self.textbox.text() == "":
+            for i in range(self.tableWidget.rowCount()):
+                if self.tableWidget.item(i, 0) == None:
+                    break
+                self.tableWidget.setRowHidden( i, False)
             return
-        start = self.tableWidget.currentRow()
-        print(start)
-        if start == -1:
-            start = 0
-        if self.tableWidget.item(start, 0) == None:
-            print('a')
-            return
-        if start+1 > self.tableWidget.rowCount():
-            return
-        for i in range(start+1, self.tableWidget.rowCount()):
+        filter_text = self.textbox.text()
+        for i in range(self.tableWidget.rowCount()):
             if self.tableWidget.item(i, 0) == None:
-                return
-            if self.textbox.text() in self.tableWidget.item(i, 0).text():
-                self.tableWidget.selectRow(i)
-                return
-        for i in range(0, start):
-            if self.textbox.text() in self.tableWidget.item(i, 0).text():
-                self.tableWidget.selectRow(i)
-                return
+                break
+            item = self.tableWidget.item( i, 0 )
+            print(filter_text)
+            print(item.text())
+            if filter_text not in item.text():
+                self.tableWidget.setRowHidden( i, True)
+            else:
+                self.tableWidget.setRowHidden( i, False)
+        return
         msgBox = QMessageBox()
         msgBox.setWindowTitle("알림") # 메세지창의 상단 제목
         msgBox.setWindowIcon(QIcon("exclamation-circle.png")) # 메세지창의 상단 icon 설정
