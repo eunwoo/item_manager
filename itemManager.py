@@ -39,7 +39,8 @@ import os.path
 # 
 # #
 DATA_FILE = 'data.json'
-APP_VERSION = 'Ver 11.0'
+HANGUL_TABLE = 'hangul.json'
+APP_VERSION = 'Ver 12.0'
 
 class NewItemDialog(QDialog):
     def __init__(self, title="새로운 아이템", name="", price="", stock="", parent=None):
@@ -102,11 +103,8 @@ class ItemTable(QTableWidget):
         QTableWidget.__init__(self, parent)
         
     def keyPressEvent(self, event):
-        print('keypressed')
         if self.currentItem() == None:
             return
-        print(self.currentItem().text())
-        print(event.key())
         if event.key() == Qt.Key_Delete:
             dialog = DialogAsk()
             if dialog.exec():
@@ -152,8 +150,9 @@ class ItemTable(QTableWidget):
 
 
 class MainWidget(QWidget):
-    def __init__(self):
+    def __init__(self, parent):
         super().__init__()
+        self.parent = parent
         layout = QVBoxLayout()
 
         layout1 = QHBoxLayout()
@@ -204,20 +203,20 @@ class MainWidget(QWidget):
             if self.tableWidget.item(i, 0) == None:
                 break
             item = self.tableWidget.item( i, 0 )
-            print(filter_text)
-            print(item.text())
             if filter_text not in item.text():
                 self.tableWidget.setRowHidden( i, True)
             else:
                 self.tableWidget.setRowHidden( i, False)
-    def keyPressEvent(self, event):
-        print('keypress')
-        return super().keyPressEvent(event)
-
     def onChanged(self, text):
         print('changed')
         print(text)
-        self.Find(text)
+        try:
+            index = self.parent.hangul_in.index(text)
+            text = self.parent.hangul_out[index]
+            self.textbox.setText(text)
+            self.Find(text)
+        except ValueError:
+            pass
     def onClickFind(self):
         print('find')
         # show all
@@ -280,7 +279,7 @@ class MainWindow(QMainWindow):
         self.setGeometry(100,100, 500, 600)
         self.setWindowTitle(''.join(["아이템 관리자 - ", APP_VERSION]))
         self.setWindowIcon(QIcon('money_512.ico'))
-        self.mainWidget = MainWidget()
+        self.mainWidget = MainWidget(self)
         self.priceWidget = PriceWidget()
         self.tab = QTabWidget()
         self.tab.addTab(self.mainWidget, "아이템 리스트")
@@ -305,6 +304,21 @@ class MainWindow(QMainWindow):
         else:
             self.LoadDefaultVariable()
 
+        if os.path.isfile(HANGUL_TABLE) == True:
+            fp = open(HANGUL_TABLE, 'r', encoding='utf-8')
+            try:
+                data = json.load(fp)
+                if 'table' in data: self.hangul_table = data['table']
+                else: self.hangul_table = []
+                self.hangul_in = list(map(lambda u: u[0], self.hangul_table))
+                self.hangul_out = list(map(lambda u: u[1], self.hangul_table))
+                print(self.hangul_in)
+                print(self.hangul_out)
+                fp.close()
+            except json.decoder.JSONDecodeError as e:
+                self.LoadDefaultVariable()
+        else:
+            self.LoadDefaultVariable()
 
         toolbar = QToolBar("My main toolbar")
         toolbar.setIconSize(QSize(16, 16))
@@ -423,6 +437,7 @@ class MainWindow(QMainWindow):
             self.priceWidget.tableWidget.setItem(i,1,itema)
             itema = QTableWidgetItem(str(self.matching[i][2]))
             self.priceWidget.tableWidget.setItem(i,2,itema)
+
     def LoadDefaultVariable(self):
         print('LoadDefaultVariable')
 
@@ -589,6 +604,7 @@ class MainWindow(QMainWindow):
                 if self.priceWidget.tableWidget.item(i, 2):
                     worksheet.write_string(print_row+1, 2, self.priceWidget.tableWidget.item(i, 2).text(), cell_format)
                 print_row = print_row + 1
+
     def ExportItemTableTxt(self, filename, export_option, is_only_editable = False):
         filenametxt = '.'.join([filename.split('.')[0], 'txt'])
         f = open(filenametxt, 'w')
