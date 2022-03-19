@@ -647,6 +647,8 @@ class MainWindow(QMainWindow):
             if self.priceWidget.tableWidget.item(i, option) == None:
                 break
             price_range_str = self.priceWidget.tableWidget.item(i, 0).text()
+            if price_range_str == "":
+                break
             price_range = price_range_str.split('-')
             print(price_range)
             if price >= float(price_range[0].strip()) and price <= float(price_range[1].strip()):
