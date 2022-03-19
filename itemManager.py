@@ -39,7 +39,7 @@ import os.path
 # 
 # #
 DATA_FILE = 'data.json'
-APP_VERSION = 'Ver 9.0'
+APP_VERSION = 'Ver 10.0'
 
 class NewItemDialog(QDialog):
     def __init__(self, title="새로운 아이템", name="", price="", stock="", parent=None):
@@ -556,7 +556,7 @@ class MainWindow(QMainWindow):
                     print('numeric test success')
                     # 기준값 적용
                     price_multiplied = float(self.mainWidget.tableWidget.item(i, 1).text())*float(self.price_multiply.text())
-                    price_text.append(str(price_multiplied))
+                    price_text.append(str(int(price_multiplied)))
                     # 대체아이템
                     if export_option > 0:
                         price_text.append(self.GetEquivalentItem(float(price_text[0]), export_option))
@@ -602,7 +602,7 @@ class MainWindow(QMainWindow):
                     print('numeric test success')
                     # 기준값 적용
                     price_multiplied = float(self.mainWidget.tableWidget.item(i, 1).text())*float(self.price_multiply.text())
-                    price_text.append(str(price_multiplied))
+                    price_text.append(str(int(price_multiplied)))
                     # 대체아이템
                     if export_option > 0:
                         price_text.append(self.GetEquivalentItem(float(price_text[0]), export_option))
