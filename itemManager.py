@@ -279,7 +279,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setGeometry(100,100, 500, 600)
         self.setWindowTitle(''.join(["아이템 관리자 - ", APP_VERSION]))
-        self.setWindowIcon(QIcon('money1.ico'))
+        self.setWindowIcon(QIcon('money_512.ico'))
         self.mainWidget = MainWidget()
         self.priceWidget = PriceWidget()
         self.tab = QTabWidget()
@@ -733,7 +733,7 @@ class MainWindow(QMainWindow):
         self.mainWidget.tableWidget.setItem(row,2,itema)
 
     def InsertItem(self, name, price, stock):
-        row = self.mainWidget.tableWidget.currentRow() + 1
+        row = self.mainWidget.tableWidget.currentRow()
         self.mainWidget.tableWidget.insertRow(row)
         itema = QTableWidgetItem(name)
         self.mainWidget.tableWidget.setItem(row,0,itema)
