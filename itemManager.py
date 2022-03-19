@@ -655,6 +655,11 @@ class MainWindow(QMainWindow):
                 item_text = self.priceWidget.tableWidget.item(i, option).text()
                 break
         return item_text
+    def ClearTable(self, table):
+        for i in range(table.rowCount()):
+            table.setItem(i, 0, QTableWidgetItem(""))
+            table.setItem(i, 1, QTableWidgetItem(""))
+            table.setItem(i, 2, QTableWidgetItem(""))
 
     def onImport(self, s):
         print("Import", s)
@@ -671,6 +676,7 @@ class MainWindow(QMainWindow):
                 sheet_ranges = wb['Sheet1']
             else:
                 return
+            self.ClearTable(self.mainWidget.tableWidget)
             for i in range(1000):
                 cellName = ''.join(['A', str(i+2)])
                 name = sheet_ranges[cellName].value
@@ -682,6 +688,7 @@ class MainWindow(QMainWindow):
                 price = sheet_ranges[cellPrice].value
                 if price == None:
                     price = ""
+                price = price.split("또는")[0].strip()
                 print(price)
                 print(type(price))
                 cellStock = ''.join(['C', str(i+2)])
@@ -691,7 +698,7 @@ class MainWindow(QMainWindow):
                 print(stock)
                 print(type(stock))
                 # data = Data(name, price, stock)
-                self.AddItem(name, str(price), str(stock))
+                self.AddItem(name, str(price), str(stock), i)
             # self.mainWidget.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
             # self.mainWidget.tableWidget.resizeColumnsToContents()
             if '시트2' in wb:
@@ -701,6 +708,7 @@ class MainWindow(QMainWindow):
             else:
                 return
             print("load price table")
+            self.ClearTable(self.priceWidget.tableWidget)
             for i in range(1000):
                 cell = ''.join(['A', str(i+2)])
                 price = sheet_ranges[cell].value
@@ -711,13 +719,12 @@ class MainWindow(QMainWindow):
                 item1 = sheet_ranges[cell].value
                 cell = ''.join(['C', str(i+2)])
                 item2 = sheet_ranges[cell].value
-                self.AddTableItem(str(price), str(item1), str(item2))
+                self.AddTableItem(str(price), str(item1), str(item2), i)
 
         else:
             print('b')
 
-    def AddItem(self, name, price, stock):
-        row = self.GetEmptyRow(self.mainWidget.tableWidget)
+    def AddItem(self, name, price, stock, row):
         itema = QTableWidgetItem(name)
         self.mainWidget.tableWidget.setItem(row,0,itema)
         itema = QTableWidgetItem(price)
@@ -736,9 +743,8 @@ class MainWindow(QMainWindow):
         self.mainWidget.tableWidget.setItem(row,2,itema)
         self.mainWidget.tableWidget.selectRow(row)
 
-    def AddTableItem(self, price, item1, item2):
+    def AddTableItem(self, price, item1, item2, row):
         print('add table item')
-        row = self.GetEmptyRow(self.priceWidget.tableWidget)
         itema = QTableWidgetItem(price)
         self.priceWidget.tableWidget.setItem(row,0,itema)
         itema = QTableWidgetItem(item1)
