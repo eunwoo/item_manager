@@ -276,7 +276,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setGeometry(100,100, 500, 600)
         self.setWindowTitle(''.join(["아이템 관리자 - ", APP_VERSION]))
-        self.setWindowIcon(QIcon('money.ico'))
+        self.setWindowIcon(QIcon('mone1y.ico'))
         self.mainWidget = MainWidget()
         self.priceWidget = PriceWidget()
         self.tab = QTabWidget()
@@ -558,7 +558,7 @@ class MainWindow(QMainWindow):
                     price_multiplied = float(self.mainWidget.tableWidget.item(i, 1).text())*float(self.price_multiply.text())
                     price_text.append(str(int(price_multiplied)))
                     # 대체아이템
-                    if export_option > 0:
+                    if export_option > 0 and self.GetEquivalentItem(float(price_text[0]), export_option) != "":
                         price_text.append(self.GetEquivalentItem(float(price_text[0]), export_option))
                     worksheet.write(print_row+1, 1, " 또는 ".join(price_text), cell_format)
                 else:
@@ -604,7 +604,7 @@ class MainWindow(QMainWindow):
                     price_multiplied = float(self.mainWidget.tableWidget.item(i, 1).text())*float(self.price_multiply.text())
                     price_text.append(str(int(price_multiplied)))
                     # 대체아이템
-                    if export_option > 0:
+                    if export_option > 0 and self.GetEquivalentItem(float(price_text[0]), export_option) != "":
                         price_text.append(self.GetEquivalentItem(float(price_text[0]), export_option))
                     f.write(f'{" 또는 ".join(price_text):>20}')
                 else:
