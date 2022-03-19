@@ -39,7 +39,7 @@ import os.path
 # 
 # #
 DATA_FILE = 'data.json'
-APP_VERSION = 'Ver 10.0'
+APP_VERSION = 'Ver 11.0'
 
 class NewItemDialog(QDialog):
     def __init__(self, title="새로운 아이템", name="", price="", stock="", parent=None):
@@ -210,6 +210,9 @@ class MainWidget(QWidget):
                 self.tableWidget.setRowHidden( i, True)
             else:
                 self.tableWidget.setRowHidden( i, False)
+    def keyPressEvent(self, event):
+        print('keypress')
+        return super().keyPressEvent(event)
 
     def onChanged(self, text):
         print('changed')
@@ -276,7 +279,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setGeometry(100,100, 500, 600)
         self.setWindowTitle(''.join(["아이템 관리자 - ", APP_VERSION]))
-        self.setWindowIcon(QIcon('mone1y.ico'))
+        self.setWindowIcon(QIcon('money1.ico'))
         self.mainWidget = MainWidget()
         self.priceWidget = PriceWidget()
         self.tab = QTabWidget()
