@@ -37,7 +37,7 @@ import os.path
 # 
 # #
 DATE_FILE = 'data.json'
-APP_VERSION = 'Ver 6.0'
+APP_VERSION = 'Ver 8.0'
 
 class NewItemDialog(QDialog):
     def __init__(self, title="새로운 아이템", name="", price="", stock="", parent=None):
@@ -164,19 +164,7 @@ class MainWidget(QWidget):
         layout.addWidget(self.tableWidget)
 
         self.setLayout(layout)
-    def onChanged(self, text):
-        print('changed')
-        print(text)
-    def onClickFind(self):
-        print('find')
-        # show all
-        if self.textbox.text() == "":
-            for i in range(self.tableWidget.rowCount()):
-                if self.tableWidget.item(i, 0) == None:
-                    break
-                self.tableWidget.setRowHidden( i, False)
-            return
-        filter_text = self.textbox.text()
+    def Find(self, filter_text):
         for i in range(self.tableWidget.rowCount()):
             if self.tableWidget.item(i, 0) == None:
                 break
@@ -187,6 +175,22 @@ class MainWidget(QWidget):
                 self.tableWidget.setRowHidden( i, True)
             else:
                 self.tableWidget.setRowHidden( i, False)
+
+    def onChanged(self, text):
+        print('changed')
+        print(text)
+        self.Find(text)
+    def onClickFind(self):
+        print('find')
+        # show all
+        if self.textbox.text() == "":
+            for i in range(self.tableWidget.rowCount()):
+                if self.tableWidget.item(i, 0) == None:
+                    break
+                self.tableWidget.setRowHidden( i, False)
+            return
+        filter_text = self.textbox.text()
+        self.Find(filter_text)
         return
         msgBox = QMessageBox()
         msgBox.setWindowTitle("알림") # 메세지창의 상단 제목
