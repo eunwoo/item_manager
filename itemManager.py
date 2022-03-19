@@ -216,7 +216,7 @@ class MainWidget(QWidget):
             self.textbox.setText(text)
             self.Find(text)
         except ValueError:
-            pass
+            self.Find(text)
     def onClickFind(self):
         print('find')
         # show all
