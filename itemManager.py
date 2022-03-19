@@ -37,7 +37,7 @@ import os.path
 # 
 # #
 DATE_FILE = 'data.json'
-APP_VERSION = 'Ver 5.0'
+APP_VERSION = 'Ver 6.0'
 
 class NewItemDialog(QDialog):
     def __init__(self, title="새로운 아이템", name="", price="", stock="", parent=None):
@@ -109,7 +109,14 @@ class ItemTable(QTableWidget):
             dialog = DialogAsk()
             if dialog.exec():
                 print('yes')
-                self.removeRow(self.currentRow())
+                indexes = []
+                for selectionRange in self.selectedRanges():
+                    indexes.extend(range(selectionRange.topRow(), selectionRange.bottomRow()+1))
+                indexes.reverse()
+                print(indexes)
+                for i in indexes:
+                    self.selectRow(i)
+                    self.removeRow(self.currentRow())
             else:
                 print('no')
 
@@ -403,14 +410,10 @@ class MainWindow(QMainWindow):
         fp.close()
         print('close')
 
-    def DisableTableRow(self, tablewidget):
-        row = tablewidget.currentRow()
-        tablewidget.setCurrentCell(row, 0)
-        self.TableToggleItemEditAttribute(tablewidget.currentItem())
-        tablewidget.setCurrentCell(row, 1)
-        self.TableToggleItemEditAttribute(tablewidget.currentItem())
-        tablewidget.setCurrentCell(row, 2)
-        self.TableToggleItemEditAttribute(tablewidget.currentItem())
+    def DisableTableRow(self, tablewidget, row):
+        self.TableToggleItemEditAttribute(tablewidget.item(row, 0))
+        self.TableToggleItemEditAttribute(tablewidget.item(row, 1))
+        self.TableToggleItemEditAttribute(tablewidget.item(row, 2))
         
     def TableToggleItemEditAttribute(self, item):
         if item.flags() & Qt.ItemIsEditable:
@@ -426,15 +429,24 @@ class MainWindow(QMainWindow):
         print("onToggleActivate", s)
         print(self.tab.currentIndex())
         if self.tab.currentIndex() == 0:
-            item = self.mainWidget.tableWidget.currentItem()
-            if item == None:
-                return
-            self.DisableTableRow(self.mainWidget.tableWidget)
+            indexes = []
+            for selectionRange in self.mainWidget.tableWidget.selectedRanges():
+                indexes.extend(range(selectionRange.topRow(), selectionRange.bottomRow()+1))
+            for i in indexes:
+                item = self.mainWidget.tableWidget.item(i, 0)
+                if item == None:
+                    return
+                self.DisableTableRow(self.mainWidget.tableWidget, i)
+
         else:
-            item = self.priceWidget.tableWidget.currentItem()
-            if item == None:
-                return
-            self.DisableTableRow(self.priceWidget.tableWidget)
+            indexes = []
+            for selectionRange in self.priceWidget.tableWidget.selectedRanges():
+                indexes.extend(range(selectionRange.topRow(), selectionRange.bottomRow()+1))
+            for i in indexes:
+                item = self.priceWidget.tableWidget.item(i, 0)
+                if item == None:
+                    return
+                self.DisableTableRow(self.priceWidget.tableWidget, i)
 
     def onNew(self, s):
         print("New", s)
@@ -461,6 +473,64 @@ class MainWindow(QMainWindow):
         else:
             print('b')
 
+    def is_number(self, string):
+        try:
+            float(string)
+            return True
+        except ValueError:
+            return False
+    
+    def ExportItemTable(self, workbook, export_option, is_only_editable = False):
+        worksheet = workbook.add_worksheet('시트1')
+        cell_format = workbook.add_format({'bold': False, 'font_color': 'black'})
+        worksheet.write(0, 0, "품 명", cell_format)
+        worksheet.write(0, 1, "가 격", cell_format)
+        worksheet.write(0, 2, "재 고", cell_format)
+        worksheet.set_column(0, 0, 30)
+        worksheet.set_column(1, 1, 30)
+        worksheet.set_column(2, 2, 10)
+        print_row = 0
+        for i in range(self.mainWidget.tableWidget.rowCount()):
+            if self.mainWidget.tableWidget.item(i, 0) == None:
+                break
+            if (not is_only_editable) or (self.mainWidget.tableWidget.item(i, 0).flags() & Qt.ItemIsEditable):
+                worksheet.write_string(print_row+1, 0, self.mainWidget.tableWidget.item(i, 0).text(), cell_format)
+                price_text = list()
+                if self.is_number(self.mainWidget.tableWidget.item(i, 1).text()):
+                    print('numeric test success')
+                    # 기준값 적용
+                    price_multiplied = float(self.mainWidget.tableWidget.item(i, 1).text())*float(self.price_multiply.text())
+                    price_text.append(str(price_multiplied))
+                    # 대체아이템
+                    if export_option > 0:
+                        price_text.append(self.GetEquivalentItem(float(price_text[0]), export_option))
+                    worksheet.write(print_row+1, 1, " 또는 ".join(price_text), cell_format)
+                else:
+                    print('numeric test fail')
+                if self.is_number(self.mainWidget.tableWidget.item(i, 2).text()):
+                    worksheet.write_number(print_row+1, 2, float(self.mainWidget.tableWidget.item(i, 2).text()), cell_format)
+                print_row = print_row + 1
+    def ExportMatchingTable(self, workbook):
+        worksheet = workbook.add_worksheet('시트2')
+        cell_format = workbook.add_format({'bold': False, 'font_color': 'black'})
+        worksheet.write(0, 0, "가격 범위", cell_format)
+        worksheet.write(0, 1, "아이템 1", cell_format)
+        worksheet.write(0, 2, "아이템 2", cell_format)
+        worksheet.set_column(0, 0, 30)
+        worksheet.set_column(1, 1, 30)
+        worksheet.set_column(2, 2, 30)
+        print_row = 0
+        for i in range(self.priceWidget.tableWidget.rowCount()):
+            if self.priceWidget.tableWidget.item(i, 0) == None:
+                break
+            if self.priceWidget.tableWidget.item(i, 0).flags() & Qt.ItemIsEditable:
+                worksheet.write_string(print_row+1, 0, self.priceWidget.tableWidget.item(i, 0).text(), cell_format)
+                if self.priceWidget.tableWidget.item(i, 1):
+                    worksheet.write_string(print_row+1, 1, self.priceWidget.tableWidget.item(i, 1).text(), cell_format)
+                if self.priceWidget.tableWidget.item(i, 2):
+                    worksheet.write_string(print_row+1, 2, self.priceWidget.tableWidget.item(i, 2).text(), cell_format)
+                print_row = print_row + 1
+
     def onExport1(self, s):#활성화된 내용만 내보내기
         print("Export", s)
         filename, selectgedFilter = QFileDialog.getSaveFileName(self, "Save Excel File", ".",
@@ -468,32 +538,8 @@ class MainWindow(QMainWindow):
         if filename != "":
             export_option = self.combo_box.currentIndex()
             workbook = xlsxwriter.Workbook(filename)
-            worksheet = workbook.add_worksheet()
-            cell_format = workbook.add_format({'bold': False, 'font_color': 'black'})
-            worksheet.write(0, 0, "품 명", cell_format)
-            worksheet.write(0, 1, "가 격", cell_format)
-            worksheet.write(0, 2, "재 고", cell_format)
-            worksheet.set_column(0, 0, 30)
-            worksheet.set_column(1, 1, 30)
-            worksheet.set_column(2, 2, 10)
-            print_row = 0
-            for i in range(self.mainWidget.tableWidget.rowCount()):
-                if self.mainWidget.tableWidget.item(i, 0) == None:
-                    break
-                if self.mainWidget.tableWidget.item(i, 0).flags() & Qt.ItemIsEditable:
-                    worksheet.write_string(print_row+1, 0, self.mainWidget.tableWidget.item(i, 0).text(), cell_format)
-                    price_text = list()
-                    if self.mainWidget.tableWidget.item(i, 1).text().isnumeric():
-                        # 기준값 적용
-                        price_multiplied = float(self.mainWidget.tableWidget.item(i, 1).text())*float(self.price_multiply.text())
-                        price_text.append(str(price_multiplied))
-                        # 대체아이템
-                        if export_option > 0:
-                            price_text.append(self.GetEquivalentItem(float(price_text[0]), export_option))
-                        worksheet.write(print_row+1, 1, " 또는 ".join(price_text), cell_format)
-                    if self.mainWidget.tableWidget.item(i, 2).text().isnumeric():
-                        worksheet.write_number(print_row+1, 2, float(self.mainWidget.tableWidget.item(i, 2).text()), cell_format)
-                    print_row = print_row + 1
+            self.ExportItemTable(workbook, export_option, True)
+            self.ExportMatchingTable(workbook)
             workbook.close()
 
     def onExport2(self, s):#전체 내용 내보내기
@@ -501,36 +547,10 @@ class MainWindow(QMainWindow):
         filename, selectgedFilter = QFileDialog.getSaveFileName(self, "Save Excel File", ".",
                                                         "Excel File (*.xls *.xlsx)")
         if filename != "":
-            print(self.combo_box.currentIndex())
             export_option = self.combo_box.currentIndex()
             workbook = xlsxwriter.Workbook(filename)
-            worksheet = workbook.add_worksheet()
-            cell_format = workbook.add_format({'bold': False, 'font_color': 'black'})
-            worksheet.write(0, 0, "품 명", cell_format)
-            worksheet.write(0, 1, "가 격", cell_format)
-            worksheet.write(0, 2, "재 고", cell_format)
-            worksheet.set_column(0, 0, 30)
-            worksheet.set_column(1, 1, 30)
-            worksheet.set_column(2, 2, 10)
-            for i in range(self.mainWidget.tableWidget.rowCount()):
-                if self.mainWidget.tableWidget.item(i, 0) == None:
-                    break
-                # 품명
-                if self.mainWidget.tableWidget.item(i, 0).text() != "@@":
-                    worksheet.write(i+1, 0, self.mainWidget.tableWidget.item(i, 0).text(), cell_format)
-                # 가격
-                price_text = list()
-                if self.mainWidget.tableWidget.item(i, 1).text().isnumeric():
-                    # 기준값 적용
-                    price_multiplied = float(self.mainWidget.tableWidget.item(i, 1).text())*float(self.price_multiply.text())
-                    price_text.append(str(price_multiplied))
-                    # 대체아이템
-                    if export_option > 0:
-                        price_text.append(self.GetEquivalentItem(float(price_text[0]), export_option))
-                    worksheet.write(i+1, 1, " 또는 ".join(price_text), cell_format)
-                # 재고
-                if self.mainWidget.tableWidget.item(i, 2).text().isnumeric():
-                    worksheet.write(i+1, 2, float(self.mainWidget.tableWidget.item(i, 2).text()), cell_format)
+            self.ExportItemTable(workbook, export_option, False)
+            self.ExportMatchingTable(workbook)
             workbook.close()
 
     def GetEquivalentItem(self, price, option):
@@ -554,21 +574,26 @@ class MainWindow(QMainWindow):
             print('a')
             print(filename)
             wb = load_workbook(filename)
-            sheet_ranges = wb['시트1']
-            for i in range(100):
-                cellName = ''.join(['B', str(i+3)])
+            if '시트1' in wb:
+                sheet_ranges = wb['시트1']
+            elif 'Sheet1' in wb:
+                sheet_ranges = wb['Sheet1']
+            else:
+                return
+            for i in range(1000):
+                cellName = ''.join(['A', str(i+2)])
                 name = sheet_ranges[cellName].value
                 if name == None:
                     break
                 print(name)
                 print(type(name))
-                cellPrice = ''.join(['C', str(i+3)])
+                cellPrice = ''.join(['B', str(i+2)])
                 price = sheet_ranges[cellPrice].value
                 if price == None:
                     price = ""
                 print(price)
                 print(type(price))
-                cellStock = ''.join(['D', str(i+3)])
+                cellStock = ''.join(['C', str(i+2)])
                 stock = sheet_ranges[cellStock].value
                 if stock == None:
                     stock = ""
@@ -578,16 +603,22 @@ class MainWindow(QMainWindow):
                 self.AddItem(name, str(price), str(stock))
             # self.mainWidget.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
             # self.mainWidget.tableWidget.resizeColumnsToContents()
+            if '시트2' in wb:
+                sheet_ranges = wb['시트2']
+            elif 'Sheet2' in wb:
+                sheet_ranges = wb['Sheet2']
+            else:
+                return
             print("load price table")
-            for i in range(100):
-                cell = ''.join(['G', str(i+3)])
+            for i in range(1000):
+                cell = ''.join(['A', str(i+2)])
                 price = sheet_ranges[cell].value
                 print(price)
                 if price == None:
                     break
-                cell = ''.join(['H', str(i+3)])
+                cell = ''.join(['B', str(i+2)])
                 item1 = sheet_ranges[cell].value
-                cell = ''.join(['I', str(i+3)])
+                cell = ''.join(['C', str(i+2)])
                 item2 = sheet_ranges[cell].value
                 self.AddTableItem(str(price), str(item1), str(item2))
 
