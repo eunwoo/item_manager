@@ -119,6 +119,34 @@ class ItemTable(QTableWidget):
                     self.removeRow(self.currentRow())
             else:
                 print('no')
+        elif event.key() == Qt.Key_Right:
+            row = self.currentRow()
+            col = self.currentColumn()
+            if col<2 and self.item(row, col+1):
+                self.setCurrentCell(row, col+1)
+        elif event.key() == Qt.Key_Left:
+            row = self.currentRow()
+            col = self.currentColumn()
+            if col>0 and self.item(row, col-1):
+                self.setCurrentCell(row, col-1)
+        elif event.key() == Qt.Key_Up:
+            row = self.currentRow()
+            col = self.currentColumn()
+            if row>0 and self.item(row-1, col):
+                self.setCurrentCell(row-1, col)
+                if self.item(row-1, col) == None:
+                    self.setItem(row-1, col, QTableWidgetItem(""))
+        elif event.key() == Qt.Key_Down:
+            row = self.currentRow()
+            col = self.currentColumn()
+            if row<1000:
+                self.setCurrentCell(row+1, col)
+                if self.item(row+1, col) == None:
+                    self.setItem(row+1, col, QTableWidgetItem(""))
+        elif event.key() == Qt.Key_Return:
+            print('enter')
+            self.edit(self.currentIndex())
+            
 
 
 class MainWidget(QWidget):
@@ -392,10 +420,18 @@ class MainWindow(QMainWindow):
         for i in range(self.mainWidget.tableWidget.rowCount()):
             if self.mainWidget.tableWidget.item(i, 0) == None:
                 break
+            if len(self.mainWidget.tableWidget.item(i, 0).text().strip()) == 0:   # 내용이 공백인 경우
+                break
             one_item = [None]*3
             one_item[0] = self.mainWidget.tableWidget.item(i, 0).text()
-            one_item[1] = self.mainWidget.tableWidget.item(i, 1).text()
-            one_item[2] = self.mainWidget.tableWidget.item(i, 2).text()
+            if self.mainWidget.tableWidget.item(i, 1) == None:
+                one_item[1] = "0"
+            else:
+                one_item[1] = self.mainWidget.tableWidget.item(i, 1).text()
+            if self.mainWidget.tableWidget.item(i, 2) == None:
+                one_item[2] = "0"
+            else:
+                one_item[2] = self.mainWidget.tableWidget.item(i, 2).text()
             items.append(one_item)
         self.items['items'] = items
 
