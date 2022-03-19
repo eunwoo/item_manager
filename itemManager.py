@@ -1,4 +1,5 @@
 import sys
+from shutil import copyfile
 
 from PySide6.QtCore import QSize, Qt, QSortFilterProxyModel
 from PySide6.QtGui import QAction, QIcon, QKeySequence, QColor, QBrush, QStandardItemModel, QStandardItem
@@ -27,6 +28,7 @@ from PySide6.QtWidgets import (
 )
 import xlsxwriter
 from openpyxl import load_workbook
+import xlrd
 from data import Data
 import json
 import os.path
@@ -36,8 +38,8 @@ import os.path
 # 
 # 
 # #
-DATE_FILE = 'data.json'
-APP_VERSION = 'Ver 8.0'
+DATA_FILE = 'data.json'
+APP_VERSION = 'Ver 9.0'
 
 class NewItemDialog(QDialog):
     def __init__(self, title="새로운 아이템", name="", price="", stock="", parent=None):
@@ -172,6 +174,11 @@ class MainWidget(QWidget):
         self.tableWidget.setColumnWidth(0, 160)
         self.tableWidget.setColumnWidth(1, 80)
         self.tableWidget.setColumnWidth(2, 80)
+        # intialize all cells with empty text
+        for i in range(self.tableWidget.rowCount()):
+            self.tableWidget.setItem(i, 0, QTableWidgetItem(""))
+            self.tableWidget.setItem(i, 1, QTableWidgetItem(""))
+            self.tableWidget.setItem(i, 2, QTableWidgetItem(""))
         # self.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
         itemA = QTableWidgetItem("이름")
@@ -238,6 +245,11 @@ class PriceWidget(QWidget):
         self.tableWidget = ItemTable(self)
         self.tableWidget.setRowCount(1000)
         self.tableWidget.setColumnCount(3)
+        # intialize all cells with empty text
+        for i in range(self.tableWidget.rowCount()):
+            self.tableWidget.setItem(i, 0, QTableWidgetItem(""))
+            self.tableWidget.setItem(i, 1, QTableWidgetItem(""))
+            self.tableWidget.setItem(i, 2, QTableWidgetItem(""))
         # self.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
         itemA = QTableWidgetItem("가격")
@@ -273,8 +285,8 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.tab)
 
-        if os.path.isfile(DATE_FILE) == True:
-            fp = open(DATE_FILE, 'r', encoding='euc-kr')
+        if os.path.isfile(DATA_FILE) == True:
+            fp = open(DATA_FILE, 'r', encoding='euc-kr')
             try:
                 data = json.load(fp)
                 if 'items' in data: self.items = data['items']
@@ -413,7 +425,8 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, e):
         print('close')
-        fp = open(DATE_FILE, 'w', encoding='euc-kr')
+        copyfile(DATA_FILE, ".".join([DATA_FILE, "bak"]))
+        fp = open(DATA_FILE, 'w', encoding='euc-kr')
 
         self.items = {}
         items = list()
@@ -438,6 +451,8 @@ class MainWindow(QMainWindow):
         items = list()
         for i in range(self.priceWidget.tableWidget.rowCount()):
             if self.priceWidget.tableWidget.item(i, 0) == None:
+                break
+            if len(self.priceWidget.tableWidget.item(i, 0).text().strip()) == 0:   # 내용이 공백인 경우
                 break
             one_item = [None]*3
             one_item[0] = self.priceWidget.tableWidget.item(i, 0).text()
@@ -536,6 +551,7 @@ class MainWindow(QMainWindow):
             if (not is_only_editable) or (self.mainWidget.tableWidget.item(i, 0).flags() & Qt.ItemIsEditable):
                 worksheet.write_string(print_row+1, 0, self.mainWidget.tableWidget.item(i, 0).text(), cell_format)
                 price_text = list()
+                print(self.mainWidget.tableWidget.item(i, 1).text())
                 if self.is_number(self.mainWidget.tableWidget.item(i, 1).text()):
                     print('numeric test success')
                     # 기준값 적용
@@ -570,28 +586,57 @@ class MainWindow(QMainWindow):
                 if self.priceWidget.tableWidget.item(i, 2):
                     worksheet.write_string(print_row+1, 2, self.priceWidget.tableWidget.item(i, 2).text(), cell_format)
                 print_row = print_row + 1
+    def ExportItemTableTxt(self, filename, export_option, is_only_editable = False):
+        filenametxt = '.'.join([filename.split('.')[0], 'txt'])
+        f = open(filenametxt, 'w')
+        for i in range(self.mainWidget.tableWidget.rowCount()):
+            if self.mainWidget.tableWidget.item(i, 0) == None:
+                break
+            if self.mainWidget.tableWidget.item(i, 0).text() == "@@":
+                f.write('\n')
+                continue
+            if (not is_only_editable) or (self.mainWidget.tableWidget.item(i, 0).flags() & Qt.ItemIsEditable):
+                f.write(f'{self.mainWidget.tableWidget.item(i, 0).text():<20}')
+                price_text = list()
+                if self.is_number(self.mainWidget.tableWidget.item(i, 1).text()):
+                    print('numeric test success')
+                    # 기준값 적용
+                    price_multiplied = float(self.mainWidget.tableWidget.item(i, 1).text())*float(self.price_multiply.text())
+                    price_text.append(str(price_multiplied))
+                    # 대체아이템
+                    if export_option > 0:
+                        price_text.append(self.GetEquivalentItem(float(price_text[0]), export_option))
+                    f.write(f'{" 또는 ".join(price_text):>20}')
+                else:
+                    print('numeric test fail')
+                if self.is_number(self.mainWidget.tableWidget.item(i, 2).text()):
+                    f.write('%10s'%self.mainWidget.tableWidget.item(i, 2).text())
+                    f.write('\n')
+        f.close()
 
     def onExport1(self, s):#활성화된 내용만 내보내기
         print("Export", s)
         filename, selectgedFilter = QFileDialog.getSaveFileName(self, "Save Excel File", ".",
-                                                        "Excel File (*.xls *.xlsx)")
+                                                        "Excel File (*.xlsx)")
         if filename != "":
             export_option = self.combo_box.currentIndex()
             workbook = xlsxwriter.Workbook(filename)
             self.ExportItemTable(workbook, export_option, True)
             self.ExportMatchingTable(workbook)
             workbook.close()
+            self.ExportItemTableTxt(filename, export_option, True)
 
     def onExport2(self, s):#전체 내용 내보내기
         print("Export", s)
         filename, selectgedFilter = QFileDialog.getSaveFileName(self, "Save Excel File", ".",
-                                                        "Excel File (*.xls *.xlsx)")
+                                                        "Excel File (*.xlsx)")
         if filename != "":
             export_option = self.combo_box.currentIndex()
             workbook = xlsxwriter.Workbook(filename)
             self.ExportItemTable(workbook, export_option, False)
             self.ExportMatchingTable(workbook)
             workbook.close()
+            self.ExportItemTableTxt(filename, export_option, False)
 
     def GetEquivalentItem(self, price, option):
         item_text = ""
@@ -614,6 +659,7 @@ class MainWindow(QMainWindow):
             print('a')
             print(filename)
             wb = load_workbook(filename)
+            # wb = xlrd.open_workbook(filename)
             if '시트1' in wb:
                 sheet_ranges = wb['시트1']
             elif 'Sheet1' in wb:
