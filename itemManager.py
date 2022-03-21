@@ -1,9 +1,12 @@
 import sys
 from shutil import copyfile
 
-from PySide6.QtCore import QSize, Qt, QSortFilterProxyModel
-from PySide6.QtGui import QAction, QIcon, QKeySequence, QColor, QBrush, QStandardItemModel, QStandardItem
-from PySide6.QtWidgets import (
+from PyQt5.QtCore import QSize, Qt, QSortFilterProxyModel, QEvent, QLocale
+from PyQt5.QtGui import (
+    QAction, QIcon, QKeySequence, QColor, QBrush, QStandardItemModel, QStandardItem, QKeyEvent,
+    QFont,
+)
+from PyQt5.QtWidgets import (
     QApplication,
     QCheckBox,
     QLabel,
@@ -40,7 +43,7 @@ import os.path
 # #
 DATA_FILE = 'data.json'
 HANGUL_TABLE = 'hangul.json'
-APP_VERSION = 'Ver 12.0'
+APP_VERSION = 'Ver 13.0'
 
 class NewItemDialog(QDialog):
     def __init__(self, title="새로운 아이템", name="", price="", stock="", parent=None):
@@ -98,9 +101,47 @@ class DialogAsk(QDialog):
         okButton.clicked.connect(self.accept)     # accept() 슬롯에 연결
         cancelButton.clicked.connect(self.reject)  # reject() 슬롯에 연결
 
+class MyItemDelegate(QStyledItemDelegate):
+    def __init__(self, parent=None):
+        QStyledItemDelegate.__init__(self, parent)
+    def eventFilter(self, source, event):
+        # print('event filter')
+        # print(event)
+        if event.type() == QEvent.KeyPress:
+            print('key press')
+            index = self.parent.parent.hangul_in.index("")
+            # try:
+            #     index = self.parent.parent.hangul_in.index(text)
+            #     text = self.parent.hangul_out[index]
+            #     self.textbox.setText(text)
+            #     self.Find(text)
+            # except ValueError:
+            #     self.Find(text)
+            return False
+        return super(MyItemDelegate, self).eventFilter(source, event)
+
 class ItemTable(QTableWidget):
     def __init__(self, parent=None):
-        QTableWidget.__init__(self, parent)
+        # QTableWidget.__init__(self, parent)
+        super().__init__()
+        # self.setItemDelegate(MyItemDelegate(self))
+        self.parent = parent
+        self.cellChanged.connect(self.cellChange)
+
+    def cellChange(self, row, col):
+        print('changed')
+        if self.item(self.currentRow(), self.currentColumn()) == None:
+            return
+        text = self.item(self.currentRow(), self.currentColumn()).text()
+        print(text)
+        try:
+            for i in range(len(self.parent.parent.hangul_in)):
+                if self.parent.parent.hangul_in[i] in text:
+                    text = text.replace(self.parent.parent.hangul_in[i], self.parent.parent.hangul_out[i])
+                    self.setItem(self.currentRow(), self.currentColumn(), QTableWidgetItem(text))
+                    break
+        except ValueError:
+            pass
         
     def keyPressEvent(self, event):
         if self.currentItem() == None:
@@ -159,8 +200,16 @@ class MainWidget(QWidget):
         self.label = QLabel("검색")
         self.label.setAlignment(Qt.AlignCenter)
         layout1.addWidget(self.label)
+
         self.textbox = QLineEdit("")
+        font = QFont()
+        font.setPointSize(12)
+        font.setWeight(QFont.Weight(75))
+        font.setItalic(False)
+        font.setBold(True)
+        self.textbox.setFont(font)
         self.textbox.textChanged[str].connect(self.onChanged)
+
         layout1.addWidget(self.textbox)
         self.buttonFind = QPushButton("찾기")
         layout1.addWidget(self.buttonFind)
@@ -825,7 +874,7 @@ class MainWindow(QMainWindow):
 
 
 app = QApplication(sys.argv)
-
+QLocale.setDefault(QLocale(QLocale.Korean))
 window = MainWindow()
 window.show()
 
